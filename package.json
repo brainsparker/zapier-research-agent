@@ -1,0 +1,22 @@
+{
+  "name": "zapier-research-agent",
+  "version": "1.0.0",
+  "description": "Zapier integration for You.com Deep Search API",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest --testPathIgnorePatterns=integration",
+    "test:unit": "jest --testPathIgnorePatterns=integration",
+    "test:integration": "jest --testPathPattern=integration --forceExit",
+    "validate": "zapier validate"
+  },
+  "dependencies": {
+    "zapier-platform-core": "18.2.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}
