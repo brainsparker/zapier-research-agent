@@ -74,6 +74,77 @@ describe('deep_search action', () => {
     expect(capturedRequest.body.search_effort).toBe('low');
   });
 
+  it('normalizes invalid search_effort values to low', async () => {
+    const { perform } = require('../creates/deep_search').operation;
+
+    let capturedRequest;
+    const mockZ = {
+      request: async (req) => {
+        capturedRequest = req;
+        return {
+          status: 200,
+          data: { answer: 'Test', results: [] },
+        };
+      },
+    };
+
+    const bundle = {
+      inputData: { query: 'test query', search_effort: ' ultra ' },
+    };
+
+    await perform(mockZ, bundle);
+
+    expect(capturedRequest.body.search_effort).toBe('low');
+  });
+
+  it('trims query before sending request', async () => {
+    const { perform } = require('../creates/deep_search').operation;
+
+    let capturedRequest;
+    const mockZ = {
+      request: async (req) => {
+        capturedRequest = req;
+        return {
+          status: 200,
+          data: { answer: 'Trimmed', results: [] },
+        };
+      },
+    };
+
+    const bundle = {
+      inputData: { query: '   test query   ' },
+    };
+
+    await perform(mockZ, bundle);
+
+    expect(capturedRequest.body.query).toBe('test query');
+  });
+
+  it('throws ValidationError when query is empty after trimming', async () => {
+    const { perform } = require('../creates/deep_search').operation;
+
+    const mockZ = {
+      errors: {
+        Error: class ZapierError extends Error {
+          constructor(message, type, status) {
+            super(message);
+            this.type = type;
+            this.status = status;
+          }
+        },
+      },
+    };
+
+    const bundle = {
+      inputData: { query: '   ' },
+    };
+
+    await expect(perform(mockZ, bundle)).rejects.toMatchObject({
+      type: 'ValidationError',
+      status: 400,
+    });
+  });
+
   it('transforms response with convenience fields', async () => {
     const { perform } = require('../creates/deep_search').operation;
 
@@ -148,5 +219,24 @@ describe('deep_search action', () => {
     expect(result.results_count).toBe(0);
     expect(result.first_result_url).toBe('');
     expect(result.first_result_title).toBe('');
+  });
+
+  it('coerces malformed result snippets to an empty array', async () => {
+    const { perform } = require('../creates/deep_search').operation;
+
+    const mockZ = {
+      request: async () => ({
+        status: 200,
+        data: {
+          answer: 'ok',
+          results: [{ url: 'u', title: 't', snippets: 'not-an-array' }],
+        },
+      }),
+    };
+
+    const bundle = { inputData: { query: 'test' } };
+    const result = await perform(mockZ, bundle);
+
+    expect(result.results[0].snippets).toEqual([]);
   });
 });

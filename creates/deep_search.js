@@ -1,25 +1,52 @@
 'use strict';
 
+const ALLOWED_SEARCH_EFFORTS = new Set(['low', 'medium', 'high']);
+
+const normalizeQuery = (query, z) => {
+  const normalized = typeof query === 'string' ? query.trim() : '';
+  if (!normalized) {
+    throw new z.errors.Error(
+      'Query is required and cannot be empty.',
+      'ValidationError',
+      400
+    );
+  }
+  return normalized;
+};
+
+const normalizeSearchEffort = (searchEffort) => {
+  if (typeof searchEffort !== 'string') {
+    return 'low';
+  }
+  const normalized = searchEffort.trim().toLowerCase();
+  return ALLOWED_SEARCH_EFFORTS.has(normalized) ? normalized : 'low';
+};
+
 const perform = async (z, bundle) => {
+  const query = normalizeQuery(bundle.inputData?.query, z);
+  const searchEffort = normalizeSearchEffort(bundle.inputData?.search_effort);
+
   const response = await z.request({
     method: 'POST',
     url: 'https://api.you.com/v1/deep_search',
     headers: { 'Content-Type': 'application/json' },
     body: {
-      query: bundle.inputData.query,
-      search_effort: bundle.inputData.search_effort || 'low',
+      query,
+      search_effort: searchEffort,
     },
   });
 
-  const data = response.data;
-  const results = (data.results || []).map((r) => ({
-    url: r.url || '',
-    title: r.title || '',
-    snippets: r.snippets || [],
+  const data = response?.data && typeof response.data === 'object' ? response.data : {};
+  const sourceResults = Array.isArray(data.results) ? data.results : [];
+
+  const results = sourceResults.map((r) => ({
+    url: r?.url || '',
+    title: r?.title || '',
+    snippets: Array.isArray(r?.snippets) ? r.snippets : [],
   }));
 
   return {
-    answer: data.answer || '',
+    answer: typeof data.answer === 'string' ? data.answer : '',
     results,
     results_count: results.length,
     first_result_url: results.length > 0 ? results[0].url : '',
