@@ -74,6 +74,29 @@ describe('deep_search action', () => {
     expect(capturedRequest.body.search_effort).toBe('low');
   });
 
+  it('falls back invalid search_effort to low', async () => {
+    const { perform } = require('../creates/deep_search').operation;
+
+    let capturedRequest;
+    const mockZ = {
+      request: async (req) => {
+        capturedRequest = req;
+        return {
+          status: 200,
+          data: { answer: 'Test', results: [] },
+        };
+      },
+    };
+
+    const bundle = {
+      inputData: { query: 'test query', search_effort: 'ultra' },
+    };
+
+    await perform(mockZ, bundle);
+
+    expect(capturedRequest.body.search_effort).toBe('low');
+  });
+
   it('transforms response with convenience fields', async () => {
     const { perform } = require('../creates/deep_search').operation;
 
@@ -144,6 +167,26 @@ describe('deep_search action', () => {
     const bundle = { inputData: { query: 'test' } };
     const result = await perform(mockZ, bundle);
 
+    expect(result.results).toEqual([]);
+    expect(result.results_count).toBe(0);
+    expect(result.first_result_url).toBe('');
+    expect(result.first_result_title).toBe('');
+  });
+
+  it('handles non-object response payload safely', async () => {
+    const { perform } = require('../creates/deep_search').operation;
+
+    const mockZ = {
+      request: async () => ({
+        status: 200,
+        data: null,
+      }),
+    };
+
+    const bundle = { inputData: { query: 'test' } };
+    const result = await perform(mockZ, bundle);
+
+    expect(result.answer).toBe('');
     expect(result.results).toEqual([]);
     expect(result.results_count).toBe(0);
     expect(result.first_result_url).toBe('');
