@@ -1,18 +1,28 @@
 'use strict';
 
 const perform = async (z, bundle) => {
+  const allowedSearchEfforts = new Set(['low', 'medium', 'high']);
+  const requestedSearchEffort = bundle.inputData.search_effort || 'low';
+  const searchEffort = allowedSearchEfforts.has(requestedSearchEffort)
+    ? requestedSearchEffort
+    : 'low';
+
   const response = await z.request({
     method: 'POST',
     url: 'https://api.you.com/v1/deep_search',
     headers: { 'Content-Type': 'application/json' },
     body: {
       query: bundle.inputData.query,
-      search_effort: bundle.inputData.search_effort || 'low',
+      search_effort: searchEffort,
     },
   });
 
-  const data = response.data;
-  const results = (data.results || []).map((r) => ({
+  const data =
+    response && typeof response.data === 'object' && response.data !== null
+      ? response.data
+      : {};
+
+  const results = (Array.isArray(data.results) ? data.results : []).map((r) => ({
     url: r.url || '',
     title: r.title || '',
     snippets: r.snippets || [],
